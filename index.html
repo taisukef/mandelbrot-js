@@ -1,0 +1,124 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+</head>
+<body>
+
+<p id="link_place"></p>
+
+<script type="module">
+import { createFullCanvas } from "https://js.sabae.cc/createFullCanvas.js";
+import { sleep } from "https://js.sabae.cc/sleep.js";
+
+// https://www.programmingmat.jp/soft_dev/mandjs.html
+
+window.onload = async () => {
+	const canvas = createFullCanvas();
+	const g = canvas.getContext("2d");
+
+	// 描画範囲
+	const w = canvas.width;
+	const h = canvas.height;
+
+	const cap = (n) => {
+		if (n < 0) {
+			return 0;
+		} else if (n > 255) {
+			return 255;
+		}
+		return n;
+	}
+	// 色設定
+	const color = {
+		// マンデルブロ集合内
+		inR: (n, i, j) => cap(i / 3),
+		inG: (n, i, j) => 0,
+		inB: (n, i, j) => cap(255 - (j / 2)),
+
+		// マンデルブロ集合外
+		outR: (n) => cap(n * 3),
+		outG: (n) => cap(n * 4),
+		outB: (n) => cap(n * 2),
+	};
+
+
+	// Canvas要素から描画用ImageDataを取得
+	const img = g.createImageData(w, h);
+
+	// 最大計算回数
+	const maxN = 255;
+
+	let t = 0;
+	for (;;) {
+		// 計算開始位置
+		const [cx, cy] = [-1.5, 0];
+		//const [cx, cy] = [-1.25, 0];
+		//const [cx, cy] = [0, 1];
+		//const [cx, cy] = [-0.021, .766001];
+		//const [cx, cy] = [-1.4079090376716419, 0.13593156372464488];
+		// https://twitter.com/randommandelbot
+		//const [cx, cy] = [-0.750879703591005, -0.023653904112507906];
+		//const [cx, cy] = [-1.9403991906177833, -0.00021919850162271107];
+		//const [cx, cy] = [0.3992622783176969, 0.22734081568459902];
+		//const [cx, cy] = [-0.30326749488728555, 0.6224464594680676];
+		//const [cx, cy] = [-0.7499299085867289, 0.010013658420999971];
+		//const [cx, cy] = [-1.7684682569026373, -0.0028739973947227715];
+
+		// 計算範囲
+		const rangeX = 2.0 / Math.pow(t / 10, t / 10);
+		const rangeY = rangeX / w * h;
+		const x = cx - rangeX / 2;
+		const y = cy - rangeY / 2;
+
+		// 1ピクセル刻み幅
+		const stepX = rangeX / w;
+		const stepY = rangeY / h;
+
+		// マンデルブロ集合を描画
+		const draw = () => {
+			for (let i = 0; i < h; i++) {
+				for (let j = 0; j < w; j++) {
+					// 複素平面上ピクセル位置の実部／虚部の値を算出
+					const pr = x + (stepX * j);
+					const pi = y + (stepY * i);
+
+					// ピクセル位置における発散回数を計算
+					let n = 0;
+					let vr = 0;
+					let vi = 0;
+					do  {
+						const tr = (vr * vr) - (vi * vi) + pr;
+						const ti = (vr * vi * 2.0) + pi;
+						vr = tr;
+						vi = ti;
+					} while ((((vr * vr) + (vi * vi)) < 4 && (++n < maxN)));
+
+					// ImageDataのオフセット算出
+					const index = (j * 4) + (i * w * 4);
+
+					// 発散回数に応じてピクセルの色を設定
+					if (n == maxN) {
+						img.data[index] = color.inR(n, i, j);
+						img.data[index + 1] = color.inG(n, i, j);
+						img.data[index + 2] = color.inB(n, i, j);
+					} else {
+						img.data[index] = color.outR(n);
+						img.data[index + 1] = color.outG(n);
+						img.data[index + 2] = color.outB(n);
+					}
+					// 不透明度を255に設定
+					img.data[index + 3] = 255;
+				}
+			}
+			// ImageDataの画像データをCanvas要素に転送
+			g.putImageData(img, 0, 0);
+		};
+		draw();
+
+		await sleep(1000 / 60);
+		t++;
+	};
+};
+
+</script>
+
+</body>
+</html>
